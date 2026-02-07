@@ -386,44 +386,45 @@ class JobSearchChatbot:
         return " | ".join(ctx.raw_query for ctx in self.state.search_contexts)
 
     def chat_stream(
-        self, user_message: str, top_k: int | None = None
+        self, user_message: str, top_k: int | None = None, add_to_context: bool = True
     ) -> tuple[str, Generator[SearchResult, None, None]]:
         """Process a user message and return a stream of results.
 
         Args:
             user_message: The user's input message.
             top_k: Number of results to return. None for unlimited.
+            add_to_context: Whether to add this query to the context (default True).
 
         Returns:
             Tuple of (search query, generator of SearchResult objects).
         """
         self._ensure_engine_loaded()
 
-        # Add user message to history
-        self.state.add_user_message(user_message)
+        if add_to_context:
+            self.state.add_user_message(user_message)
 
         # Parse intent
         intent = self._parse_intent(user_message)
 
-        # Store search context
-        self.state.search_contexts.append(
-            SearchContext(
-                raw_query=user_message,
-                parsed_intent=intent.search_query,
-                filters={
-                    "workplace_type": intent.workplace_type,
-                    "company_focus": intent.company_focus,
-                    "min_salary": intent.min_salary,
-                    "max_salary": intent.max_salary,
-                    "location_city": intent.location_city,
-                    "location_state": intent.location_state,
-                    "seniority_level": intent.seniority_level,
-                    "center_lat": intent.center_lat,
-                    "center_lon": intent.center_lon,
-                    "radius_miles": intent.radius_miles,
-                },
+        if add_to_context:
+            self.state.search_contexts.append(
+                SearchContext(
+                    raw_query=user_message,
+                    parsed_intent=intent.search_query,
+                    filters={
+                        "workplace_type": intent.workplace_type,
+                        "company_focus": intent.company_focus,
+                        "min_salary": intent.min_salary,
+                        "max_salary": intent.max_salary,
+                        "location_city": intent.location_city,
+                        "location_state": intent.location_state,
+                        "seniority_level": intent.seniority_level,
+                        "center_lat": intent.center_lat,
+                        "center_lon": intent.center_lon,
+                        "radius_miles": intent.radius_miles,
+                    },
+                )
             )
-        )
 
         # Use hybrid search with keywords if provided
         keywords = intent.keywords if intent.keywords else None

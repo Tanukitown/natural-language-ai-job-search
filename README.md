@@ -2,6 +2,13 @@
 
 A semantic job search system with conversational refinement capabilities.
 
+## Requirements
+
+- Python 3.11+
+- OpenAI API key (for embeddings and chat)
+- jobs.jsonl in root directory
+- ~2GB RAM for full dataset
+
 ## Quick Start
 
 ```bash
@@ -20,22 +27,25 @@ $env:OPENAI_API_KEY = 'your-key-here'
 
 The scripts will install [uv](https://github.com/astral-sh/uv) if needed, sync dependencies, and launch the demo.
 
-**Note**: Place `jobs.jsonl` (8.4GB, 100K job postings) in the project root before running.
+**Note**: Place `jobs.jsonl` in the project root before running.
 
 ## Demo Commands
 
-| Command | Description |
-|---------|-------------|
-| `/back` | Undo last refinement (shows context depth) |
-| `/next` | Show next page of results |
-| `/prev` | Show previous page of results |
-| `/reset` | Clear all context and start fresh |
-| `/budget` | Show token usage and remaining budget |
-| `/quit` | Exit the demo |
+| Command         | Description |
+|----------------|-------------|
+| `/back`        | Undo last refinement (shows context depth) |
+| `/next`        | Show next page of results |
+| `/prev`        | Show previous page of results |
+| `/first`       | Return to the first page of results |
+| `/details N`   | Show full details for job number N (from the current list) |
+| `/return`      | Return to the list page after viewing details |
+| `/reset`       | Clear all context and start fresh |
+| `/budget`      | Show token usage and remaining budget |
+| `/quit`        | Exit the demo |
 
 ## Data File
 
-This project requires `jobs.jsonl` in the project root. The file contains 100,000 job postings from HiringCafe (8.4GB) and is not included in the repository due to its size.
+This project requires `jobs.jsonl` in the project root. The file contains job postings from HiringCafe (potentially millions of jobs, not included in the repository due to size).
 
 Each line is a JSON object with:
 - `id`: Unique job identifier
@@ -46,7 +56,7 @@ Each line is a JSON object with:
 ## Features
 
 ### 1. Search
-Natural language search across 100K job postings using semantic embeddings.
+Natural language search across job postings using semantic embeddings.
 
 ```python
 from search import JobSearchEngine
@@ -136,7 +146,7 @@ Example: "Jobs near Akron, Ohio" → geocodes to (41.08, -81.52) → 30-mile rad
 ├── chatbot.py     # Conversational interface with LangChain
 ├── geocoding.py   # Location geocoding with caching
 ├── demo.py        # Interactive demo script
-└── jobs.jsonl     # 100K job postings dataset
+└── jobs.jsonl     # job postings dataset
 ```
 
 ## Trade-offs
@@ -173,8 +183,17 @@ Example: "Jobs near Akron, Ohio" → geocodes to (41.08, -81.52) → 30-mile rad
 1. **Re-ranking Model**: Train a cross-encoder for more accurate relevance
 2. **Evaluation**: Build test set with relevance judgments for tuning weights
 
-## Requirements
+## Token Usage and Cost
 
-- Python 3.11+
-- OpenAI API key (for embeddings and chat)
-- ~2GB RAM for full dataset
+Each query consumes tokens in two main ways:
+
+1. **LLM Intent Parsing**: Each user query is sent to GPT-4o-mini to extract search intent and filters. This typically uses **100–300 tokens per query** (prompt + response).
+2. **Embedding API Calls**: Each unique search query is embedded using OpenAI's `text-embedding-3-small` model. This usually consumes **10–50 tokens per query** (depending on query length).
+
+- **Refinements** (using `/back`, `/reset`, or follow-up queries) also trigger LLM calls and new embeddings.
+- **No tokens are consumed for streaming, filtering, or pagination**—these are handled locally.
+- The `/budget` command shows your current token usage and remaining budget.
+
+**Example:**
+- 10 queries with refinements ≈ 1,000–3,500 tokens total (LLM + embeddings)
+- At $0.50 per 1M tokens (embedding) and $5 per 1M tokens (GPT-4o-mini), most users stay well under $1 for typical usage.

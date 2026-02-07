@@ -215,6 +215,7 @@ def main() -> None:
                 print("No more results available.")
             else:
                 current_page += 1
+                clear_screen()
                 show_page(fetched_results, current_page, results_generator is None)
 
             print_commands(chatbot.get_context_depth())
@@ -234,6 +235,7 @@ def main() -> None:
                 print("Already on the first page.")
             else:
                 current_page -= 1
+                clear_screen()
                 show_page(fetched_results, current_page, results_generator is None)
 
             print_commands(chatbot.get_context_depth())
@@ -253,6 +255,7 @@ def main() -> None:
                 print("Already on the first page.")
             else:
                 current_page = 0
+                clear_screen()
                 show_page(fetched_results, current_page, results_generator is None)
 
             print_commands(chatbot.get_context_depth())
@@ -267,6 +270,7 @@ def main() -> None:
                 print("Not viewing job details. Nothing to return from.")
             else:
                 viewing_details = None
+                clear_screen()
                 show_page(fetched_results, current_page, results_generator is None)
 
             print_commands(chatbot.get_context_depth())
@@ -319,7 +323,7 @@ def main() -> None:
             viewing_details = job_rank
             clear_screen()
             print(format_job_details(found_result))
-            print("Commands: /return")
+            print("Commands: /return /reset /quit")
             continue
 
         if user_input.lower() == "/back":
@@ -329,10 +333,32 @@ def main() -> None:
                     print("Back to start. Enter a new search.")
                 else:
                     print(f"Went back. Context depth: {depth}")
-                # Clear results on back
-                fetched_results = []
-                results_generator = None
-                current_page = 0
+                    # Re-run the search for the new context
+                    clear_screen()
+                    # Use only the last context's raw_query for the search
+                    if chatbot.state.search_contexts:
+                        last_query = chatbot.state.search_contexts[-1].raw_query
+                    else:
+                        last_query = ""
+                    print("Parsing query...", flush=True)
+                    query, results_generator = chatbot.chat_stream(
+                        last_query, add_to_context=False
+                    )
+                    segmented = chatbot.get_segmented_query()
+                    print(f"Searching for: '{segmented}'", flush=True)
+                    fetched_results = []
+                    current_page = 0
+                    fetched_results, results_generator = stream_first_page(
+                        results_generator
+                    )
+                    if not fetched_results:
+                        print("No results found.")
+                    print_commands(chatbot.get_context_depth())
+                    if fetched_results:
+                        has_more = results_generator is not None or (
+                            current_page + 1
+                        ) * PAGE_SIZE < len(fetched_results)
+                        print_pagination(current_page, len(fetched_results), has_more)
             else:
                 print("Already at the start. Nothing to go back to.")
             print_commands(chatbot.get_context_depth())
