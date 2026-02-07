@@ -1,0 +1,27 @@
+[project]
+name = "job-search"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "faiss-cpu>=1.13.2",
+    "langchain>=1.2.9",
+    "langchain-openai>=1.1.7",
+    "numpy>=2.4.2",
+    "openai>=2.17.0",
+    "pydantic>=2.12.5",
+]
+
+[tool.pyrefly]
+python-interpreter = ".venv/bin/python"
+project-includes = [
+    "**/*.py*",
+    "**/*.ipynb",
+]
+
+[dependency-groups]
+dev = [
+    "pyrefly>=0.51.2",
+    "ruff>=0.15.0",
+]
