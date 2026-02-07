@@ -140,6 +140,64 @@ class Job(BaseModel):
             return self.v7_processed_job_data.work_arrangement.workplace_type or ""
         return ""
 
+    def get_salary_display(self) -> str:
+        """Get a formatted salary string with smart hourly/annual detection."""
+        if (
+            self.v7_processed_job_data
+            and self.v7_processed_job_data.compensation_and_benefits
+            and self.v7_processed_job_data.compensation_and_benefits.salary
+        ):
+            sal = self.v7_processed_job_data.compensation_and_benefits.salary
+            if sal.low is not None or sal.high is not None:
+                currency = sal.currency or "USD"
+                freq = (sal.frequency or "").lower()
+
+                # Infer frequency if missing: values under $500 are likely hourly
+                max_val = sal.high or sal.low or 0
+                if not freq and max_val > 0:
+                    freq = "hourly" if max_val < 500 else "yearly"
+                elif not freq:
+                    freq = "yearly"
+
+                is_hourly = "hour" in freq
+
+                def fmt(val: float) -> str:
+                    """Format value appropriately for hourly vs annual."""
+                    if is_hourly:
+                        # Hourly: show decimals, no comma
+                        return f"${val:.2f}" if val != int(val) else f"${val:.0f}"
+                    # Annual: use comma separator
+                    return f"${val:,.0f}"
+
+                def yearly_approx(hourly_val: float) -> str:
+                    """Calculate yearly approximation from hourly (40hr/week * 52 weeks)."""
+                    yearly = hourly_val * 2080
+                    return f"${yearly:,.0f}"
+
+                freq_label = "hourly" if is_hourly else "yearly"
+
+                if sal.low and sal.high:
+                    if sal.low == sal.high:
+                        base = f"{fmt(sal.low)} {currency} ({freq_label})"
+                        if is_hourly:
+                            base += f" ≈ {yearly_approx(sal.low)}/yr"
+                        return base
+                    base = f"{fmt(sal.low)} - {fmt(sal.high)} {currency} ({freq_label})"
+                    if is_hourly:
+                        base += f" ≈ {yearly_approx(sal.low)} - {yearly_approx(sal.high)}/yr"
+                    return base
+                elif sal.low:
+                    base = f"{fmt(sal.low)}+ {currency} ({freq_label})"
+                    if is_hourly:
+                        base += f" ≈ {yearly_approx(sal.low)}+/yr"
+                    return base
+                elif sal.high:
+                    base = f"Up to {fmt(sal.high)} {currency} ({freq_label})"
+                    if is_hourly:
+                        base += f" ≈ Up to {yearly_approx(sal.high)}/yr"
+                    return base
+        return "No Salary Specified"
+
 
 class SearchResult(BaseModel):
     """A single search result with relevance score."""

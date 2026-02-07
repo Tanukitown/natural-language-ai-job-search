@@ -5,18 +5,33 @@ A semantic job search system with conversational refinement capabilities.
 ## Quick Start
 
 ```bash
-# Install dependencies
-uv sync
-
-# Download the jobs data file (not included in repo due to size)
-# Place jobs.jsonl (8.4GB, 100K job postings) in the project root
-
 # Set your OpenAI API key
 export OPENAI_API_KEY='your-key-here'
 
-# Run the interactive demo
-uv run python demo.py
+# Run the demo (installs dependencies automatically)
+./run.sh
 ```
+
+**Windows (PowerShell):**
+```powershell
+$env:OPENAI_API_KEY = 'your-key-here'
+.\run.ps1
+```
+
+The scripts will install [uv](https://github.com/astral-sh/uv) if needed, sync dependencies, and launch the demo.
+
+**Note**: Place `jobs.jsonl` (8.4GB, 100K job postings) in the project root before running.
+
+## Demo Commands
+
+| Command | Description |
+|---------|-------------|
+| `/back` | Undo last refinement (shows context depth) |
+| `/next` | Show next page of results |
+| `/prev` | Show previous page of results |
+| `/reset` | Clear all context and start fresh |
+| `/budget` | Show token usage and remaining budget |
+| `/quit` | Exit the demo |
 
 ## Data File
 
@@ -76,15 +91,17 @@ Each job has 3 pre-computed embeddings (OpenAI `text-embedding-3-small`, 1536 di
 
 1. **Query Embedding**: User query is embedded using the same OpenAI model
 2. **Multi-Index Search**: Query is compared against all 3 FAISS indices
-3. **Weighted Combination**: Scores are combined with configurable weights:
+3. **Hybrid Search**: Keyword matching boosts exact term matches
+4. **Weighted Combination**: Scores are combined with configurable weights:
    - Explicit: 50% (what the job explicitly states)
    - Inferred: 30% (related/implied qualifications)  
    - Company: 20% (company characteristics)
-4. **Post-Filtering**: Filters applied for workplace type, company focus, etc.
+5. **Structured Filtering**: Salary, location, seniority, workplace type filters
+6. **Caching**: FAISS indices cached to disk for fast subsequent loads
 
 ### Relevance Ranking
 
-Final score = `(0.5 × explicit_similarity) + (0.3 × inferred_similarity) + (0.2 × company_similarity)`
+Final score = `(0.5 × explicit_similarity) + (0.3 × inferred_similarity) + (0.2 × company_similarity) + keyword_boost`
 
 When searching for company-specific traits (nonprofits, social good), the company weight is boosted to 40%.
 
@@ -92,18 +109,33 @@ When searching for company-specific traits (nonprofits, social good), the compan
 
 1. User sends a message
 2. LLM (GPT-4o-mini) parses intent considering conversation history
-3. Extracted: search query, workplace type filter, company focus
-4. Search runs with adjusted weights based on intent
-5. Results filtered by extracted constraints
-6. Context saved for next refinement
+3. Extracted: search query, workplace type, company focus, salary range, location, seniority level, radius, keywords
+4. Hybrid search runs with keyword boosting
+5. Structured filters applied (salary, location, seniority, radius)
+6. Results streamed as they pass filters
+7. Context saved for next refinement
+
+### Geocoding
+
+Location-based searches use coordinate-based radius filtering with the Haversine distance formula:
+
+1. **LLM Extraction**: GPT-4o-mini extracts city/state and attempts to provide coordinates for common cities
+2. **Geocoding Fallback**: If coordinates are missing, the system calls OpenStreetMap Nominatim API
+3. **Caching**: Geocoding results are cached to `.cache/geocode_cache.json` to avoid repeated API calls
+4. **Radius Filter**: Jobs within the specified radius (default 30 miles) pass; remote jobs always pass
+
+Example: "Jobs near Akron, Ohio" → geocodes to (41.08, -81.52) → 30-mile radius filter
 
 ## Project Structure
 
 ```
+├── run.sh         # Single-command launcher (bash)
+├── run.ps1        # Single-command launcher (PowerShell)
 ├── models.py      # Pydantic data models
 ├── search.py      # FAISS-based search engine
 ├── chatbot.py     # Conversational interface with LangChain
-├── demo.py        # Runnable demo script
+├── geocoding.py   # Location geocoding with caching
+├── demo.py        # Interactive demo script
 └── jobs.jsonl     # 100K job postings dataset
 ```
 
@@ -123,23 +155,23 @@ When searching for company-specific traits (nonprofits, social good), the compan
 - **Company characteristics**: Embeddings capture industry, org type effectively
 - **Compound queries**: "remote machine learning engineer" combines multiple aspects
 - **Refinement flow**: Context accumulation works for progressive narrowing
+- **Structured filters**: "jobs paying over $100k in Seattle" works
+- **Radius search**: "jobs within 25 miles of San Francisco" uses Haversine distance
+- **Streaming**: Results display as they're found
+- **Pagination**: Lazy loading with `/next` and `/prev` navigation, fetches results on demand
+- **Fast loading**: Cached indices load in seconds after first run
+- **Negation handling**: "not entry level" extracts exclude terms and filters results post-search
+- **Smart salary display**: Detects hourly vs annual, formats appropriately ($23.73/hr vs $150,000/yr)
+- **Salary filter precision**: Jobs without salary data excluded when salary filter is active
 
 ## What's Tricky
 
-- **Salary filters**: Requires structured field parsing, not embedding-based
-- **Location specificity**: "jobs in San Francisco" needs geo-filtering
-- **Negation**: "not entry level" doesn't work well with embeddings
 - **Rare combinations**: Limited training data for niche intersections
 
-## Improvements with More Time
+## Future Improvements
 
-1. **Hybrid Search**: Combine embedding search with keyword/BM25 for exact matches
-2. **Structured Filters**: Parse salary ranges, experience levels from conversation
-3. **Re-ranking Model**: Train a cross-encoder for more accurate relevance
-4. **Caching**: Cache embeddings and indices to disk for faster startup
-5. **Streaming**: Stream results as they're found for better UX
-6. **Evaluation**: Build test set with relevance judgments for tuning weights
-7. **Geo-Search**: Use `_geoloc` field for location-based filtering
+1. **Re-ranking Model**: Train a cross-encoder for more accurate relevance
+2. **Evaluation**: Build test set with relevance judgments for tuning weights
 
 ## Requirements
 

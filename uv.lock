@@ -184,6 +184,7 @@ dependencies = [
     { name = "numpy" },
     { name = "openai" },
     { name = "pydantic" },
+    { name = "requests" },
 ]
 
 [package.dev-dependencies]
@@ -200,6 +201,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.4.2" },
     { name = "openai", specifier = ">=2.17.0" },
     { name = "pydantic", specifier = ">=2.12.5" },
+    { name = "requests", specifier = ">=2.32.5" },
 ]
 
 [package.metadata.requires-dev]
