@@ -2,16 +2,16 @@
   "budget": 10.0,
   "usage": {
     "text-embedding-3-small": {
-      "input_tokens": 371,
+      "input_tokens": 377,
       "output_tokens": 0,
-      "cost": 7.420000000000001e-06
+      "cost": 7.54e-06
     },
     "gpt-4o-mini": {
-      "input_tokens": 50530,
-      "output_tokens": 7573,
-      "cost": 0.0121233
+      "input_tokens": 52106,
+      "output_tokens": 7795,
+      "cost": 0.012492899999999998
     }
   },
-  "total_cost": 0.01213072,
-  "remaining_budget": 9.98786928
+  "total_cost": 0.012500439999999998,
+  "remaining_budget": 9.98749956
 }
