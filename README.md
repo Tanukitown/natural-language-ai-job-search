@@ -1,13 +1,13 @@
-# HiringCafe Job Search
+# Conversational Job Search Demo
 
-A semantic job search system with conversational refinement capabilities.
+A semantic job search system with conversational refinement capabilities. This repository serves as an example project to showcase a simple conversational chatbot built on top of vector search and LLM intent parsing.
 
 ## Requirements
 
 - Python 3.11+
 - OpenAI API key (for embeddings and chat)
-- jobs.jsonl in root directory
-- ~2GB RAM for full dataset
+- `jobs.jsonl` in the project root (dataset not included)
+- ~2GB RAM for full dataset (100K+ jobs)
 
 ## Quick Start
 
@@ -20,6 +20,7 @@ export OPENAI_API_KEY='your-key-here'
 ```
 
 **Windows (PowerShell):**
+
 ```powershell
 $env:OPENAI_API_KEY = 'your-key-here'
 .\run.ps1
@@ -27,27 +28,28 @@ $env:OPENAI_API_KEY = 'your-key-here'
 
 The scripts will install [uv](https://github.com/astral-sh/uv) if needed, sync dependencies, and launch the demo.
 
-**Note**: Place `jobs.jsonl` in the project root before running.
+> **Note**: Place `jobs.jsonl` in the project root before running the demo; the dataset itself is not included in this repository.
 
 ## Demo Commands
 
-| Command         | Description |
-|----------------|-------------|
-| `/back`        | Undo last refinement (shows context depth) |
-| `/next`        | Show next page of results |
-| `/prev`        | Show previous page of results |
-| `/first`       | Return to the first page of results |
-| `/details N`   | Show full details for job number N (from the current list) |
-| `/return`      | Return to the list page after viewing details |
-| `/reset`       | Clear all context and start fresh |
-| `/budget`      | Show token usage and remaining budget |
-| `/quit`        | Exit the demo |
+| Command      | Description                                                |
+| ------------ | ---------------------------------------------------------- |
+| `/back`      | Undo last refinement (shows context depth)                 |
+| `/next`      | Show next page of results                                  |
+| `/prev`      | Show previous page of results                              |
+| `/first`     | Return to the first page of results                        |
+| `/details N` | Show full details for job number N (from the current list) |
+| `/return`    | Return to the list page after viewing details              |
+| `/reset`     | Clear all context and start fresh                          |
+| `/budget`    | Show token usage and remaining budget                      |
+| `/quit`      | Exit the demo                                              |
 
 ## Data File
 
-This project requires `jobs.jsonl` in the project root. The file contains job postings from HiringCafe (potentially millions of jobs, not included in the repository due to size).
+This project requires `jobs.jsonl` in the project root. The file contains job postings used for the demo (not included in the repository due to size).
 
 Each line is a JSON object with:
+
 - `id`: Unique job identifier
 - `apply_url`: Link to apply
 - `job_information`: Raw job data (title, description)
@@ -56,6 +58,7 @@ Each line is a JSON object with:
 ## Features
 
 ### 1. Search
+
 Natural language search across job postings using semantic embeddings.
 
 ```python
@@ -68,6 +71,7 @@ response = engine.search("data science machine learning", top_k=10)
 ```
 
 ### 2. Refine
+
 Conversational refinement using context accumulation.
 
 ```python
@@ -91,11 +95,11 @@ chat.chat("make it remote")
 
 Each job has 3 pre-computed embeddings (OpenAI `text-embedding-3-small`, 1536 dims):
 
-| Embedding | Purpose | Source |
-|-----------|---------|--------|
-| `embedding_explicit_vector` | Match job requirements | Title, skills, certifications |
-| `embedding_inferred_vector` | Match related qualifications | Related titles, inferred skills |
-| `embedding_company_vector` | Match company characteristics | Company name, industry, activities |
+| Embedding                   | Purpose                       | Source                             |
+| --------------------------- | ----------------------------- | ---------------------------------- |
+| `embedding_explicit_vector` | Match job requirements        | Title, skills, certifications      |
+| `embedding_inferred_vector` | Match related qualifications  | Related titles, inferred skills    |
+| `embedding_company_vector`  | Match company characteristics | Company name, industry, activities |
 
 ### Search Algorithm
 
@@ -104,7 +108,7 @@ Each job has 3 pre-computed embeddings (OpenAI `text-embedding-3-small`, 1536 di
 3. **Hybrid Search**: Keyword matching boosts exact term matches
 4. **Weighted Combination**: Scores are combined with configurable weights:
    - Explicit: 50% (what the job explicitly states)
-   - Inferred: 30% (related/implied qualifications)  
+   - Inferred: 30% (related/implied qualifications)
    - Company: 20% (company characteristics)
 5. **Structured Filtering**: Salary, location, seniority, workplace type filters
 6. **Caching**: FAISS indices cached to disk for fast subsequent loads
@@ -146,18 +150,18 @@ Example: "Jobs near Akron, Ohio" → geocodes to (41.08, -81.52) → 30-mile rad
 ├── chatbot.py     # Conversational interface with LangChain
 ├── geocoding.py   # Location geocoding with caching
 ├── demo.py        # Interactive demo script
-└── jobs.jsonl     # job postings dataset
+└── jobs.jsonl     # job postings dataset (not tracked)
 ```
 
 ## Trade-offs
 
-| Decision | Benefit | Cost |
-|----------|---------|------|
-| FAISS in-memory | Fast search (<100ms) | ~2GB RAM for 100K jobs |
-| Pre-computed embeddings | No embedding latency per job | Data size, freshness |
-| GPT-4o-mini for parsing | Cost-effective, fast | Less nuanced than GPT-4 |
-| Post-search filtering | Simple, flexible | May reduce result count |
-| Weighted embedding fusion | Balances multiple signals | Weights are heuristic |
+| Decision                  | Benefit                      | Cost                    |
+| ------------------------- | ---------------------------- | ----------------------- |
+| FAISS in-memory           | Fast search (<100ms)         | ~2GB RAM for 100K jobs  |
+| Pre-computed embeddings   | No embedding latency per job | Data size, freshness    |
+| GPT-4o-mini for parsing   | Cost-effective, fast         | Less nuanced than GPT-4 |
+| Post-search filtering     | Simple, flexible             | May reduce result count |
+| Weighted embedding fusion | Balances multiple signals    | Weights are heuristic   |
 
 ## What Works Well
 
@@ -195,5 +199,6 @@ Each query consumes tokens in two main ways:
 - The `/budget` command shows your current token usage and remaining budget.
 
 **Example:**
+
 - 10 queries with refinements ≈ 1,000–3,500 tokens total (LLM + embeddings)
 - At $0.50 per 1M tokens (embedding) and $5 per 1M tokens (GPT-4o-mini), most users stay well under $1 for typical usage.

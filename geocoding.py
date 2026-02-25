@@ -72,7 +72,7 @@ def geocode_city(
         resp = requests.get(
             "https://nominatim.openstreetmap.org/search",
             params={"q": query, "format": "json", "limit": 1},
-            headers={"User-Agent": "HiringCafeJobSearch/1.0"},
+            headers={"User-Agent": "JobSearchDemo/1.0"},
             timeout=10,
         )
         _last_request_time = time.time()
